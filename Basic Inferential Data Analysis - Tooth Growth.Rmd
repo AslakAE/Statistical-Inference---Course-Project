@@ -1,0 +1,257 @@
+---
+title: 'Effect of Vitamin C on Tooth Growth in Guinea Pigs'
+author: "Aslak"
+date: "11 4 2019"
+output: 
+  pdf_document: 
+    keep_tex: yes
+---
+
+## Overview
+This report has analyzed the effect of vitamin C on tooth growth in guinea pigs. A higher dosage leads to higher tooth growth (at 95 % confidence). No conclusion - at 95 % confidence - can be made for the hypothesis that the delivery method of orange juice leads to higher tooth growth that ascorbic acid.
+
+## Structure of report
+The following report will summarize the findings with both figures and text. Please note that the R code can be found in the appendix.
+
+## Initiation
+First, what type of data will we use to determine the effect of vitamin C on tooth growth in guinea pigs? The dataset ToothGrowth shall aid us answering that question. Each animal in the study received one of three dose levels of vitamin C (0.5, 1, and 2 mg/day) by one of two delivery methods, orange juice or ascorbic acid (a form of vitamin C and coded as VC). More information about the data can be found **[here](https://stat.ethz.ch/R-manual/R-devel/library/datasets/html/ToothGrowth.html)**.
+
+```{r, cache = TRUE, echo = FALSE, results = "hide", fig.keep = "all", message = FALSE}
+## INTRO
+# Install required packages if necessary
+# install.packages("dplyr")
+# install.packages("tidyverse")
+# install.packages("reshape2")
+# install.packages("tidyr")
+# install.packages("kableExtra")
+# install.packages("datasets")
+
+# Load packages
+library(dplyr)
+library(tidyverse)
+library(reshape2)
+library(tidyr)
+library(kableExtra)
+library(datasets)
+
+# Dataset
+data(ToothGrowth)
+
+```
+
+## Summary of Data
+
+This section will show a basic summary of the data.
+
+Summarize the parameters:
+```{r, cache = TRUE, echo = FALSE}
+# Show the distribution of the variables.
+summary(ToothGrowth)
+```
+
+Show dimensions of the data:
+```{r, cache = TRUE, echo = FALSE}
+# Dimensions of data
+dim(ToothGrowth)
+```
+
+- Column "len": Tooth length
+- Column "supp": Supplement type (VC or OJ)
+- Column "dose": Dose in miligrams per day
+
+The graphs below provide additional intuition about the data. The figures show the results when we group by supplement type and dosage.
+
+```{r, cache = TRUE, echo = FALSE, fig.height = 3, results = "hide", fig.keep = "all", message = FALSE}
+## Seperate based on dose and supplement type, show mean and 95 % conf interval.
+# Create ggplot
+g <- ggplot(ToothGrowth, aes(x = dose, y = len, group = dose))
+# Violin plot
+g <- g + geom_violin(aes(fill = dose), trim = FALSE)
+# Grid with supplement type in different window
+g <- g + facet_grid(. ~ supp)
+# Create labels
+g <- g + labs(
+  x = "Dose [mg/day]", 
+  y = "Tooth length", 
+  title = "Variation in tooth length for dose and supplement")
+# Show plot
+g
+
+# Seperate based on dose and supplement type, show mean and 95 % conf interval.
+plot <- ggplot(ToothGrowth, aes(len))
+# Histogram
+plot <- plot + geom_histogram(color = "black", binwidth = 0.5)
+# Grid wich seperates based on dosage and supplement type
+plot <- plot + facet_grid(dose ~ supp)
+# Create labels
+plot <- plot + labs(
+  x = "Tooth Length", 
+  y = "Frequency") 
+# Show plot
+plot
+```
+
+The violin and histogram figure may indicate that the tooth growth is higher for larger doses and for the supplement type orange juice (OJ). This cannot be concluded with any confidence before we have done any hypothesis testing.
+
+The plots above show that the variances for the different groups (defined by supplement type and dosage) are not equal. It is also evident that it cannot be concluded that the variables are normally distributed, due to the small sample size.
+
+## Assumptions
+
+- The group can be treated as independent with unequal variances. It should be reasonable to consider the groups different since the study involved 60 different guinea pigs.
+- A confidence interval can be created by applying the t distribution. 
+    - The t distribution is useful for small sample size comparisons and assumes normality (but is robust to this assumption within limits).
+    - The t distribution will be applied with unequal variances, as implied by the violin graph above.
+    - The t distribution will be applied without pairing since the data contains result for 60 different guinea pigs.
+- When considering the hypothesis that dosage amount affects the tooth growth, it is sufficient to compare the largest dose with the lowest dose (2 mg/day and 0.5 mg/day).
+- When considering the hypothesis that supplement type affects the tooth growth, the entire dataset with different dosages can be used - due to the same number of observations for each dosage.
+- A 95 % confidence interval will be used in hypothesis test.
+
+## Results
+
+### Effect of Tooth Growth by Dosage
+
+Compare tooth growth by dose for each supplement type.
+
+- Supplement type ascorbic acid VC:
+    - H0: mean for high dose = mean for low dose.
+    - H1: mean for high dose != mean for low dose.
+- Supplement type orange juice:
+    - H0: mean for high dose = mean for low dose.
+    - H1: mean for high dose != mean for low dose.
+
+```{r, cache = TRUE, echo = FALSE, message = FALSE}
+## Calculate t.test to see if the hypothesis that 
+## the mean for high and low dose is the same.
+# Create a subset of dataset without the dosage 1 mg/day.
+
+# First, subset with only VC and dosages 0.5 and 2 mg/day.
+ToothGrowthSuppVC <- ToothGrowth %>% 
+  filter(supp %in% "VC") %>% 
+  filter(dose %in% c(0.5, 2))
+
+# Second, subset with only OJ and dosages 0.5 and 2 mg/day.
+ToothGrowthSuppOJ <- ToothGrowth %>% 
+  filter(supp %in% "OJ") %>% 
+  filter(dose %in% c(0.5, 2))
+
+# Perform t.test without paring and assuming unequal variance.
+t.test(len ~ dose, paired = FALSE, var.equal = FALSE, data = ToothGrowthSuppVC)$conf
+t.test(len ~ dose, paired = FALSE, var.equal = FALSE, data = ToothGrowthSuppOJ)$conf
+```
+
+The t.test shows that for both supplement types the high dose had a higher tooth growth than the low dose (at 95% confidence). This can be concluded since the interval is entirely below zero (as an example).
+
+### Effect of Tooth Growth by Supplement Type
+
+Compare tooth growth by supplement type.
+
+```{r, cache = TRUE, echo = FALSE, message = FALSE}
+# Calculate t.test to see if the hypothesis that the 
+# mean for supplement types are the same.
+t.test(len ~ supp, paired = FALSE, var.equal = FALSE, data = ToothGrowth)$conf
+```
+
+The t.test shows that it cannot be concluded with 95% confidence that orange juice (OJ) leads to more tooth growth than ascorbic acid (VC).
+
+\pagebreak
+
+# Appendix: R code
+
+```{r, cache = TRUE, echo = FALSE}
+## INTRO
+# Install required packages if necessary
+# install.packages("dplyr")
+# install.packages("tidyverse")
+# install.packages("reshape2")
+# install.packages("tidyr")
+# install.packages("kableExtra")
+# install.packages("datasets")
+
+# Load packages
+library(dplyr)
+library(tidyverse)
+library(reshape2)
+library(tidyr)
+library(kableExtra)
+library(datasets)
+
+# Dataset
+data(ToothGrowth)
+
+```
+
+## Summary of Data
+
+```{r, cache = TRUE, results = "hide", fig.show="hide"}
+# Show the distribution of the variables.
+summary(ToothGrowth)
+```
+
+```{r, cache = TRUE, results = "hide", fig.show="hide"}
+# Dimensions of data
+dim(ToothGrowth)
+```
+
+```{r, cache = TRUE, results = "hide", fig.show="hide"}
+## Seperate based on dose and supplement type, show mean and 95 % conf interval.
+# Create ggplot
+g <- ggplot(ToothGrowth, aes(x = dose, y = len, group = dose))
+# Violin plot
+g <- g + geom_violin(aes(fill = dose), trim = FALSE)
+# Grid with supplement type in different window
+g <- g + facet_grid(. ~ supp)
+# Create labels
+g <- g + labs(
+  x = "Dose [mg/day]", 
+  y = "Tooth length", 
+  title = "Variation in tooth length for dose and supplement")
+# Show plot
+g
+
+# Seperate based on dose and supplement type, show mean and 95 % conf interval.
+plot <- ggplot(ToothGrowth, aes(len))
+# Histogram
+plot <- plot + geom_histogram(color = "black", binwidth = 0.5)
+# Grid wich seperates based on dosage and supplement type
+plot <- plot + facet_grid(dose ~ supp)
+# Create labels
+plot <- plot + labs(
+  x = "Tooth Length", 
+  y = "Frequency") 
+# Show plot
+plot
+```
+
+## Assumptions
+
+## Results
+
+### Effect of Tooth Growth by Dosage
+
+```{r, cache = TRUE, results = "hide", fig.show="hide"}
+## Calculate t.test to see if the hypothesis that 
+## the mean for high and low dose is the same.
+# Create a subset of dataset without the dosage 1 mg/day.
+
+# First, subset with only VC and dosages 0.5 and 2 mg/day.
+ToothGrowthSuppVC <- ToothGrowth %>% 
+  filter(supp %in% "VC") %>% 
+  filter(dose %in% c(0.5, 2))
+
+# Second, subset with only OJ and dosages 0.5 and 2 mg/day.
+ToothGrowthSuppOJ <- ToothGrowth %>% 
+  filter(supp %in% "OJ") %>% 
+  filter(dose %in% c(0.5, 2))
+
+# Perform t.test without paring and assuming unequal variance.
+t.test(len ~ dose, paired = FALSE, var.equal = FALSE, data = ToothGrowthSuppVC)
+t.test(len ~ dose, paired = FALSE, var.equal = FALSE, data = ToothGrowthSuppOJ)
+```
+
+### Effect of Tooth Growth by Supplement Type
+
+```{r, cache = TRUE, results = "hide", fig.show="hide"}
+# Calculate t.test to see if the hypothesis that the 
+# mean for supplement types are the same.
+t.test(len ~ supp, paired = FALSE, var.equal = FALSE, data = ToothGrowth)
+```
